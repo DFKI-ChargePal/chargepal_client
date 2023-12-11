@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from communication import Communication
+from chargepal_client.communication import Communication
 import os
 import sys
 import time
