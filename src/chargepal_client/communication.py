@@ -13,8 +13,9 @@ class Communication:
         ), f"Robot port must be in 1024-65535 and different from server port {self.SERVER_ADDRESS[1]}."
         self.active = True
         self.messages: List[str] = []
+        self.port = port
         self.robot_address = ("localhost", port)
-        self.send(f"REQUEST_PORT {port}")
+        self.send("REQUEST_PORT")
         self.listener = Listener(self.robot_address)
         self.listener_thread = Thread(target=self.listen)
         self.listener_thread.start()
@@ -34,7 +35,7 @@ class Communication:
         """Establish connection to send one message to server."""
         try:
             client = Client(self.SERVER_ADDRESS)
-            client.send(message)
+            client.send(f"{self.port} {message}")
             client.close()
         except ConnectionRefusedError as e:
             raise e
