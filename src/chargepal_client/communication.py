@@ -1,7 +1,8 @@
-from typing import List, Type
+from typing import Deque, Optional, Type
 from types import TracebackType
-from threading import Thread
+from collections import deque
 from multiprocessing.connection import Client, Listener
+from threading import Condition, Thread
 
 
 class Communication:
@@ -12,7 +13,8 @@ class Communication:
             1024 <= port <= 65535 and port != self.SERVER_ADDRESS[1]
         ), f"Robot port must be in 1024-65535 and different from server port {self.SERVER_ADDRESS[1]}."
         self.active = True
-        self.messages: List[str] = []
+        self.messages: Deque[str] = deque()
+        self.condition = Condition()
         self.port = port
         self.robot_address = ("localhost", port)
         self.send("REQUEST_PORT")
@@ -46,11 +48,20 @@ class Communication:
         while self.active:
             # Note: 08.12.2023 Cannot abort this connection cleanly
             #  without receiving a message from the server.
-            self.on_message_received(str(connection.recv()))
+            message = str(connection.recv())
+            self.condition.acquire()
+            self.messages.append(message)
+            self.condition.notify_all()
+            self.condition.release()
         connection.close()
 
-    def on_message_received(self, message: str) -> None:
-        self.messages.append(message)
+    def wait_for_message(self, timeout: Optional[float] = None) -> Optional[str]:
+        """Wait for message or until a timeout occurs."""
+        self.condition.acquire()
+        self.condition.wait(timeout)
+        message = self.messages.popleft() if self.messages else None
+        self.condition.release()
+        return message
 
     def shutdown(self) -> None:
         if self.active:

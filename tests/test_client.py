@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-from chargepal_client.communication import Communication
 import os
 import sys
 import time
+from chargepal_client.communication import Communication
 
 
 class TestCommunication(Communication):
@@ -54,6 +54,7 @@ if __name__ == "__main__":
         port = int(sys.argv[1])
         try:
             while not communicate(port):
+                # Retry connecting every second.
                 time.sleep(1.0)
         except KeyboardInterrupt:
             pass
