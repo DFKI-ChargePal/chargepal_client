@@ -34,12 +34,12 @@ def communicate(port: int) -> bool:
                 except ConnectionRefusedError as e:
                     print(e)
                     return False
-                count = len(communication.messages)
+                messages = communication.pop_messages()
+                count = len(messages)
                 print(
                     f"{count} ping message{'s' if count != 1 else ''}"
                     " received from server since last input."
                 )
-                communication.messages.clear()
         return True
     except ConnectionRefusedError as e:
         print(e)

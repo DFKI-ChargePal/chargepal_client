@@ -1,6 +1,6 @@
-from typing import Deque, Optional, Type
+from typing import Deque, Dict, List, Optional, Type
 from types import TracebackType
-from collections import deque
+from collections import defaultdict, deque
 from multiprocessing.connection import Client, Listener
 from threading import Condition, Thread
 
@@ -13,14 +13,16 @@ class Communication:
             1024 <= port <= 65535 and port != self.SERVER_ADDRESS[1]
         ), f"Robot port must be in 1024-65535 and different from server port {self.SERVER_ADDRESS[1]}."
         self.active = True
-        self.messages: Deque[str] = deque()
-        self.condition = Condition()
+        self._messages: Deque[str] = deque()
+        self._topic_messages: Dict[str, Deque[str]] = defaultdict(deque)
+        self._condition = Condition()
+        self._topic_conditions: Dict[str, Condition] = defaultdict(Condition)
         self.port = port
         self.robot_address = ("localhost", port)
+        self._listener = Listener(self.robot_address)
+        self._listener_thread = Thread(target=self.listen)
+        self._listener_thread.start()
         self.send("REQUEST_PORT")
-        self.listener = Listener(self.robot_address)
-        self.listener_thread = Thread(target=self.listen)
-        self.listener_thread.start()
 
     def __enter__(self) -> "Communication":
         return self
@@ -44,28 +46,69 @@ class Communication:
 
     def listen(self) -> None:
         """Listen for server messages on this robot's dedicated port."""
-        connection = self.listener.accept()
+        connection = self._listener.accept()
         while self.active:
             # Note: 08.12.2023 Cannot abort this connection cleanly
             #  without receiving a message from the server.
             message = str(connection.recv())
-            self.condition.acquire()
-            self.messages.append(message)
-            self.condition.notify_all()
-            self.condition.release()
+            topic = message.split()[0]
+            if topic in self._topic_conditions.keys():
+                condition = self._topic_conditions[topic]
+                condition.acquire()
+                self._topic_messages[topic].append(message)
+                condition.notify_all()
+                condition.release()
+            else:
+                self._condition.acquire()
+                self._messages.append(message)
+                self._condition.notify_all()
+                self._condition.release()
         connection.close()
 
-    def wait_for_message(self, timeout: Optional[float] = None) -> Optional[str]:
-        """Wait for message or until a timeout occurs."""
-        self.condition.acquire()
-        self.condition.wait(timeout)
-        message = self.messages.popleft() if self.messages else None
-        self.condition.release()
+    def pop_messages(self, topic: Optional[str] = None) -> List[str]:
+        """Remove all messages for topic from its queue and return them."""
+        if topic:
+            self._topic_conditions[topic].acquire()
+            messages = list(self._topic_messages[topic])
+            self._topic_messages[topic].clear()
+            self._topic_conditions[topic].release()
+        else:
+            self._condition.acquire()
+            messages = list(self._messages)
+            self._messages.clear()
+            self._condition.release()
+        return messages
+
+    def wait_for_message(
+        self,
+        topic: Optional[str] = None,
+        timeout: Optional[float] = None,
+        discard_existing_messages: bool = True,
+    ) -> Optional[str]:
+        """
+        Wait for message on topic or until a timeout occurs.
+         If discard_existing_messages, clear message queue before waiting.
+        """
+        if topic:
+            if topic not in self._topic_conditions.keys():
+                condition = self._topic_conditions[topic] = Condition()
+            else:
+                condition = self._topic_conditions[topic]
+            messages = self._topic_messages[topic]
+        else:
+            condition = self._condition
+            message = self._messages
+        condition.acquire()
+        if discard_existing_messages:
+            messages.clear()
+        condition.wait(timeout)
+        message = messages.popleft() if messages else None
+        condition.release()
         return message
 
     def shutdown(self) -> None:
         if self.active:
             self.active = False
             Client(self.robot_address).close()
-            self.listener.close()
-            self.listener_thread.join()
+            self._listener.close()
+            self._listener_thread.join()
