@@ -19,10 +19,12 @@ class Communication:
         self._topic_conditions: Dict[str, Condition] = defaultdict(Condition)
         self.port = port
         self.robot_address = ("localhost", port)
+        # Note: Send before listening to ensure server connection
+        #  because otherwise listening gets stuck on an error.
+        self.send("REQUEST_PORT")
         self._listener = Listener(self.robot_address)
         self._listener_thread = Thread(target=self.listen)
         self._listener_thread.start()
-        self.send("REQUEST_PORT")
 
     def __enter__(self) -> "Communication":
         return self
