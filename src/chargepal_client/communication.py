@@ -6,7 +6,7 @@ from threading import Condition, Thread
 
 
 class Communication:
-    SERVER_ADDRESS = ("localhost", 1024)
+    SERVER_ADDRESS = ("192.168.158.25", 9000)
 
     def __init__(self, port: int) -> None:
         assert (
@@ -18,7 +18,7 @@ class Communication:
         self._condition = Condition()
         self._topic_conditions: Dict[str, Condition] = defaultdict(Condition)
         self.port = port
-        self.robot_address = ("localhost", port)
+        self.robot_address = ("192.168.158.33", port)
         # Note: Send before listening to ensure server connection
         #  because otherwise listening gets stuck on an error.
         self.send("REQUEST_PORT")
