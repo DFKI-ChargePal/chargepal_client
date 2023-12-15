@@ -50,21 +50,24 @@ class Communication:
         """Listen for server messages on this robot's dedicated port."""
         connection = self._listener.accept()
         while self.active:
-            # Note: 08.12.2023 Cannot abort this connection cleanly
-            #  without receiving a message from the server.
-            message = str(connection.recv())
-            topic = message.split()[0]
-            if topic in self._topic_conditions.keys():
-                condition = self._topic_conditions[topic]
-                condition.acquire()
-                self._topic_messages[topic].append(message)
-                condition.notify_all()
-                condition.release()
-            else:
-                self._condition.acquire()
-                self._messages.append(message)
-                self._condition.notify_all()
-                self._condition.release()
+            try:
+                # Note: 08.12.2023 Cannot abort this connection cleanly
+                #  without receiving a message from the server.
+                message = str(connection.recv())
+                topic = message.split()[0]
+                if topic in self._topic_conditions.keys():
+                    condition = self._topic_conditions[topic]
+                    condition.acquire()
+                    self._topic_messages[topic].append(message)
+                    condition.notify_all()
+                    condition.release()
+                else:
+                    self._condition.acquire()
+                    self._messages.append(message)
+                    self._condition.notify_all()
+                    self._condition.release()
+            except EOFError:
+                pass
         connection.close()
 
     def pop_messages(self, topic: Optional[str] = None) -> List[str]:

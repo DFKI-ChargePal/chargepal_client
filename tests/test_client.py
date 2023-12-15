@@ -29,11 +29,7 @@ def communicate(port: int) -> bool:
                     return False
                 if not message:
                     break
-                try:
-                    communication.send(message)
-                except ConnectionRefusedError as e:
-                    print(e)
-                    return False
+                communication.send(message)
                 messages = communication.pop_messages()
                 count = len(messages)
                 print(
@@ -54,7 +50,7 @@ if __name__ == "__main__":
         port = int(sys.argv[1])
         try:
             while not communicate(port):
-                # Retry connecting every second.
+                # Try to reconnect every second.
                 time.sleep(1.0)
         except KeyboardInterrupt:
             pass
