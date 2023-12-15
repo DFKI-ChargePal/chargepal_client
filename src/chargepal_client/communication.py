@@ -102,7 +102,7 @@ class Communication:
             messages = self._topic_messages[topic]
         else:
             condition = self._condition
-            message = self._messages
+            messages = self._messages
         condition.acquire()
         if discard_existing_messages:
             messages.clear()
