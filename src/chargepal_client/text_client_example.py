@@ -1,15 +1,20 @@
 #!/usr/bin/env python3
+from typing import Optional
+import os
+import sys
 import time
 from grpc._channel import _InactiveRpcError
 from chargepal_client.local_server_pb2 import Job, RobotID, TextMessage
 from chargepal_client.robot_client import RobotClient
 
 
-def communicate() -> bool:
+def communicate(ip_address: Optional[str], port: Optional[str]) -> bool:
     try:
         client = RobotClient()
-        print(f"Creating communication to server on port {client.SERVER_PORT}.")
-        stub = client.connect_server()
+        ip_address = ip_address if ip_address else client.IP_ADDRESS
+        port = port if port else client.SERVER_PORT
+        print(f"Creating communication to server at {ip_address}:{port}.")
+        stub = client.connect_server(ip_address=ip_address, port=port)
         print("Enter messages to send, or an empty one to stop.")
         while True:
             message = input("Input message: ")
@@ -34,9 +39,14 @@ def communicate() -> bool:
 
 
 if __name__ == "__main__":
-    try:
-        while not communicate():
-            # Try to reconnect every second.
-            time.sleep(1.0)
-    except KeyboardInterrupt:
-        pass
+    if len(sys.argv) > 3:
+        print(f"Usage: {os.path.basename(__file__)} [<IP address>] [<port>]")
+    else:
+        try:
+            ip_address = sys.argv[1] if len(sys.argv) >= 2 else None
+            port = sys.argv[2] if len(sys.argv) >= 3 else None
+            while not communicate(ip_address, port):
+                # Try to reconnect every second.
+                time.sleep(1.0)
+        except KeyboardInterrupt:
+            pass

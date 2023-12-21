@@ -1,3 +1,4 @@
+from typing import Optional
 from threading import Event, Thread
 import grpc
 import time
@@ -16,10 +17,14 @@ class RobotClient:
         self.ping_thread = Thread(target=self.ping)
         self.ping_thread.start()
 
-    def connect_server(self) -> LocalServerStub:
+    def connect_server(
+        self, ip_address: Optional[str] = None, port: Optional[int] = None
+    ) -> LocalServerStub:
         """Return a stub for local server services."""
         return LocalServerStub(
-            grpc.insecure_channel(f"{self.IP_ADDRESS}:{self.SERVER_PORT}")
+            grpc.insecure_channel(
+                f"{ip_address if ip_address else self.IP_ADDRESS}:{port if port else self.SERVER_PORT}"
+            )
         )
 
     def ping(self) -> None:
