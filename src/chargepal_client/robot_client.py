@@ -1,43 +1,28 @@
-from typing import Any, Type, TypeVar
-from concurrent.futures import ThreadPoolExecutor
+from threading import Event, Thread
 import grpc
-import logging
-from chargepal_client import local_server_pb2_grpc
-from chargepal_client.local_server_pb2 import EmptyMessage
-from chargepal_client.local_server_pb2_grpc import LocalServerStub, RobotClientServicer
+import time
+from chargepal_client.local_server_pb2_grpc import LocalServerStub
 
 
-T = TypeVar("T", bound="RobotClient")
-
-
-class RobotClient(RobotClientServicer):
+class RobotClient:
     IP_ADDRESS = "192.168.158.25"
     SERVER_PORT = 9000
+    PING_INTERVAL = 1.0
 
-    def __init__(self, grpc_server: grpc.Server) -> None:
-        super().__init__()
-        self.grpc_server = grpc_server  # Note: Must be refereced for persistence.
+    def __init__(self) -> None:
+        self.next_time = time.time() + self.PING_INTERVAL
+        self.stop_event = Event()  # Note: set() to stop
         self.ping_count = 0
-
-    @classmethod
-    def serve(cls: Type[T], port: int) -> T:
-        """
-        Create a gRPC server on the robot client to receive messages initiazed by the local server.
-        """
-        logging.basicConfig()
-        grpc_server = grpc.server(ThreadPoolExecutor(max_workers=42))
-        client = cls(grpc_server)
-        local_server_pb2_grpc.add_RobotClientServicer_to_server(client, grpc_server)
-        grpc_server.add_insecure_port(f"{cls.IP_ADDRESS}:{port}")
-        grpc_server.start()
-        return client
-
-    def Ping(self, request: EmptyMessage, context: Any) -> EmptyMessage:
-        self.ping_count += 1
-        return EmptyMessage()
+        self.ping_thread = Thread(target=self.ping)
+        self.ping_thread.start()
 
     def connect_server(self) -> LocalServerStub:
         """Return a stub for local server services."""
         return LocalServerStub(
             grpc.insecure_channel(f"{self.IP_ADDRESS}:{self.SERVER_PORT}")
         )
+
+    def ping(self) -> None:
+        while not self.stop_event.wait(self.next_time - time.time()):
+            self.ping_count += 1
+            self.next_time += self.PING_INTERVAL
