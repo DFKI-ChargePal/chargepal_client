@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import time
 from grpc._channel import _InactiveRpcError
-from chargepal_client.local_server_pb2 import TextMessage
+from chargepal_client.local_server_pb2 import Job, RobotID, TextMessage
 from chargepal_client.robot_client import RobotClient
 
 
@@ -15,7 +15,11 @@ def communicate() -> bool:
             message = input("Input message: ")
             if not message:
                 break
-            stub.SendTextMessage(TextMessage(text=message))
+            if message == "FETCH_JOB":
+                job: Job = stub.FetchJob(RobotID(name="ChargePal01"))
+                print(job)
+            else:
+                stub.SendTextMessage(TextMessage(text=message))
             print(
                 f"{client.ping_count} ping message{'s' if client.ping_count != 1 else ''}"
                 " received from server since last input."
