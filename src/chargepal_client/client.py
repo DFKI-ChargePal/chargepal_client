@@ -13,14 +13,15 @@ import std_msgs.msg
 
 class Grpc_Client:
     def __init__(self):
-        self.channel = grpc.insecure_channel('localhost:50059')
+        self.server_address = rospy.get_param('/server_address', 'localhost:50059')
+        self.channel = grpc.insecure_channel(self.server_address)
         self.stub = communication_pb2_grpc.CommunicationStub(self.channel)
         self.rospack = rospkg.RosPack()
         self.heartbeat_publisher = rospy.Publisher('/grpc_server_status', std_msgs.msg.String, queue_size=10)
         self.robot_name = rospy.get_param('/robot_name')
-    
+
     def update_rdb(self):
-        
+
         while True:
             request = communication_pb2.Request(robot_name=self.robot_name,request_name="update_rdb")
             try:
@@ -56,7 +57,7 @@ class Grpc_Client:
                     status = "SERVER_DEADLINE_EXCEEDED"
                 else:
                     status = str(e.code())
-        
+
         return response, status
 
     def free_bcs(self):
@@ -73,9 +74,9 @@ class Grpc_Client:
                     status = "SERVER_DEADLINE_EXCEEDED"
                 else:
                     status = str(e.code())
-        
+
         return response, status
-    
+
     def free_bws(self):
         response = None
         request = communication_pb2.Request(robot_name=self.robot_name,request_name="ask_free_bws")
@@ -90,9 +91,9 @@ class Grpc_Client:
                     status = "SERVER_DEADLINE_EXCEEDED"
                 else:
                     status = str(e.code())
-        
+
         return response, status
-    
+
     def push_to_ldb(self,table_name,rdb_string):
         response = None
         request = communication_pb2.Request(robot_name=self.robot_name, request_name="push_to_ldb", rdb_data=rdb_string, table_name=table_name)
@@ -107,9 +108,9 @@ class Grpc_Client:
                     status = "SERVER_DEADLINE_EXCEEDED"
                 else:
                     status = str(e.code())
-        
+
         return response, status
-    
+
 
     def update_job_monitor(self):
         response = None
@@ -125,16 +126,16 @@ class Grpc_Client:
                     status = "SERVER_DEADLINE_EXCEEDED"
                 else:
                     status = str(e.code())
-        
+
         return response, status
-    
+
     def reset_station_blocker(self,request_name):
         response = None
         request = communication_pb2.Request(robot_name=self.robot_name,request_name=request_name)
         try:
             response = self.stub.ResetStationBlocker(request)
             status = "SUCCESSFUL"
-            
+
         except grpc.RpcError as e:
                 if e.code() == StatusCode.UNAVAILABLE:
                     status = "SERVER_UNAVAILABLE"
@@ -143,9 +144,9 @@ class Grpc_Client:
                     status = "SERVER_DEADLINE_EXCEEDED"
                 else:
                     status = str(e.code())
-        
+
         return response, status
-    
+
 
     def operation_time(self,cart):
         response = None
@@ -161,9 +162,9 @@ class Grpc_Client:
                     status = "SERVER_DEADLINE_EXCEEDED"
                 else:
                     status = str(e.code())
-        
+
         return response, status
-    
+
     def pull_ldb(self):
         response = None
         request = communication_pb2.Request(robot_name=self.robot_name,request_name="update_rdb")
@@ -192,4 +193,3 @@ def main():
     rospy.spin()
 if __name__ == '__main__':
     main()
-
