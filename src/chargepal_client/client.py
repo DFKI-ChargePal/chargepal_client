@@ -22,7 +22,7 @@ class Grpc_Client:
 
     def update_rdb(self):
 
-        while True:
+        while not rospy.is_shutdown():
             request = communication_pb2.Request(robot_name=self.robot_name,request_name="update_rdb")
             try:
                 response = self.stub.UpdateRDB(request)
@@ -191,5 +191,8 @@ def main():
     rdb_update_thread = threading.Thread(target=client.update_rdb)
     rdb_update_thread.start()
     rospy.spin()
+    rdb_update_thread.join()
+
+
 if __name__ == '__main__':
     main()
