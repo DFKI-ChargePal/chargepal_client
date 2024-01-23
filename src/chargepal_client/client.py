@@ -29,7 +29,7 @@ class Grpc_Client:
                 with open(self.rospack.get_path("chargepal_bundle")+'/db/rdb.db', 'wb') as rdb_file:
                     rdb_file.write(response.ldb)
                 self.heartbeat_publisher.publish("SERVER_CONNECTED")
-                print("Database file received and replaced successfully.")
+                #print("Database file received and replaced successfully.")
 
             except grpc.RpcError as e:
                 if e.code() == StatusCode.UNAVAILABLE:
