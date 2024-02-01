@@ -13,7 +13,7 @@ import std_msgs.msg
 
 class Grpc_Client:
     def __init__(self):
-        self.server_address = rospy.get_param('/server_address', 'localhost:50059')
+        self.server_address = rospy.get_param('/server_address', '192.168.158.25:50058')
         self.channel = grpc.insecure_channel(self.server_address)
         self.stub = communication_pb2_grpc.CommunicationStub(self.channel)
         self.rospack = rospkg.RosPack()
