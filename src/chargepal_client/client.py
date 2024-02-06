@@ -40,7 +40,6 @@ class Grpc_Client:
                 else:
                     self.heartbeat_publisher.publish(str(e.code()))
 
-            time.sleep(1)
 
     def fetch_job(self):
         response = None
@@ -112,9 +111,9 @@ class Grpc_Client:
         return response, status
 
 
-    def update_job_monitor(self):
+    def update_job_monitor(self,job_type,job_status):
         response = None
-        request = communication_pb2.Request(robot_name=self.robot_name, request_name="update_job_monitor")
+        request = communication_pb2.Request(robot_name=self.robot_name,job_name=job_type,job_status=job_status, request_name="update_job_monitor")
         try:
             response = self.stub.UpdateJobMonitor(request)
             status = "SUCCESSFUL"
