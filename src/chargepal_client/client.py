@@ -22,6 +22,7 @@ class Grpc_Client(Core):
         super().update_rdb(
             lambda: not rospy.is_shutdown(),
             self.rdb_filepath,
+            self.heartbeat_publisher.publish,
         )
 
     def pull_ldb(self):
