@@ -38,7 +38,7 @@ class Core:
                 else:
                     publisher_callback(str(e.code()))
 
-    def fetch_job(self) -> Tuple[Optional[communication_pb2.Response_Job], str]:
+    def fetch_job(self) -> Tuple[Optional[communication_pb2.Response_FetchJob], str]:
         response: Optional[communication_pb2.Response_Job] = None
         request = communication_pb2.Request(
             robot_name=self.robot_name, request_name="fetch_job"
