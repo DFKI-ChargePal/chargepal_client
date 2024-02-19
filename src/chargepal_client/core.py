@@ -160,13 +160,33 @@ class Core:
 
     def operation_time(
         self, cart: str
-    ) -> Tuple[Optional[communication_pb2.Response_ResetStationBlocker], str]:
-        response: Optional[communication_pb2.Response_ResetStationBlocker] = None
+    ) -> Tuple[Optional[communication_pb2.Response_OperationTime], str]:
+        response: Optional[communication_pb2.Response_OperationTime] = None
         request = communication_pb2.Request(
             cart_name=cart, request_name="operation_time"
         )
         try:
-            response = self.stub.ResetStationBlocker(request)
+            response = self.stub.OperationTime(request)
+            status = "SUCCESSFUL"
+        except grpc.RpcError as e:
+            if e.code() == StatusCode.UNAVAILABLE:
+                status = "SERVER_UNAVAILABLE"
+
+            elif e.code() == StatusCode.DEADLINE_EXCEEDED:
+                status = "SERVER_DEADLINE_EXCEEDED"
+            else:
+                status = str(e.code())
+        return response, status
+
+    def ready_to_plug_ads(
+        self, station: str
+    ) -> Tuple[Optional[communication_pb2.Response_Ready2PluginAds], str]:
+        response: Optional[communication_pb2.Response_Ready2PluginAds] = None
+        request = communication_pb2.Request(
+            station_name=station, request_name="ready_to_plug_ads"
+        )
+        try:
+            response = self.stub.Ready2PluginAds(request)
             status = "SUCCESSFUL"
         except grpc.RpcError as e:
             if e.code() == StatusCode.UNAVAILABLE:
