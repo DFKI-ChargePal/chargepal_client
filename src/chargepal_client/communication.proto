@@ -53,7 +53,7 @@ message Response_OperationTime {
 
 }
 
-message Response_Ready2PluginAds {
+message Response_Ready2PlugInADS {
   bool ready_to_plugin = 1;
 
 }
@@ -67,6 +67,6 @@ service Communication {
   rpc PushToLDB(Request) returns (Response_PushToLDB);
   rpc ResetStationBlocker(Request) returns (Response_ResetStationBlocker);
   rpc OperationTime(Request) returns (Response_OperationTime);
-  rpc Ready2PluginAds(Request) returns (Response_Ready2PluginAds);
+  rpc Ready2PlugInADS(Request) returns (Response_Ready2PlugInADS);
 
 }

@@ -178,15 +178,15 @@ class Core:
                 status = str(e.code())
         return response, status
 
-    def ready_to_plug_ads(
+    def ready_to_plug_in_ads(
         self, station: str
-    ) -> Tuple[Optional[communication_pb2.Response_Ready2PluginAds], str]:
-        response: Optional[communication_pb2.Response_Ready2PluginAds] = None
+    ) -> Tuple[Optional[communication_pb2.Response_Ready2PlugInADS], str]:
+        response: Optional[communication_pb2.Response_Ready2PlugInADS] = None
         request = communication_pb2.Request(
-            station_name=station, request_name="ready_to_plug_ads"
+            station_name=station, request_name="ready_to_plug_in_ads"
         )
         try:
-            response = self.stub.Ready2PluginAds(request)
+            response = self.stub.Ready2PlugInADS(request)
             status = "SUCCESSFUL"
         except grpc.RpcError as e:
             if e.code() == StatusCode.UNAVAILABLE:
