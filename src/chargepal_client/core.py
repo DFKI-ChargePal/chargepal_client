@@ -3,6 +3,8 @@ from grpc import StatusCode
 import grpc
 import communication_pb2
 import communication_pb2_grpc
+import sqlite3
+import ast
 
 
 class Core:
@@ -11,6 +13,42 @@ class Core:
         self.channel = grpc.insecure_channel(self.server_address)
         self.stub = communication_pb2_grpc.CommunicationStub(self.channel)
         self.robot_name = robot_name
+
+    def update_database(
+        self, rdb_filepath: str, response: communication_pb2.Response_UpdateRDB
+    ):
+        conn_rdb = sqlite3.connect(rdb_filepath)
+        cursor_rdb = conn_rdb.cursor()
+
+        for table_data in response.tables:
+            table_name = table_data.table_name
+            rows = table_data.rows
+
+            cursor_rdb.execute(
+                f"SELECT sql FROM sqlite_master WHERE type='table' AND name=?",
+                (table_name,),
+            )
+            table_definition = cursor_rdb.fetchone()[0]
+            # Extract column names from the table definition
+            column_names = [
+                part.split()[0] for part in table_definition.split("(")[1].split(",")
+            ]
+
+            # Iterate over rows
+            for row_msg in rows:
+                # Extract values from the Row message
+                row_identifier = row_msg.row_identifier
+                row_values = ast.literal_eval(row_msg.column_values)
+                set_columns = ", ".join(
+                    [f"{column_name} = ?" for column_name in column_names]
+                )
+                cursor_rdb.execute(
+                    f"UPDATE {table_name} SET {set_columns} WHERE rowid = ?",
+                    row_values + (row_identifier,),
+                )
+
+        conn_rdb.commit()
+        conn_rdb.close()
 
     def update_rdb(
         self,
@@ -24,8 +62,9 @@ class Core:
             )
             try:
                 response = self.stub.UpdateRDB(request)
-                with open(rdb_filepath, "wb") as rdb_file:
-                    rdb_file.write(response.ldb)
+
+                self.update_database(rdb_filepath, response)
+
                 publisher_callback("SERVER_CONNECTED")
                 # print("Database file received and replaced successfully.")
 
@@ -203,12 +242,12 @@ class Core:
         rdb_filepath: str,
         publisher_callback: Callable[[str], None],
     ):
-        response: Optional[communication_pb2.Response_UpdateRDB] = None
+        response: Optional[communication_pb2.Response_PullLDB] = None
         request = communication_pb2.Request(
-            robot_name=self.robot_name, request_name="update_rdb"
+            robot_name=self.robot_name, request_name="pull_ldb"
         )
         try:
-            response = self.stub.UpdateRDB(request)
+            response = self.stub.PullLDB(request)
             with open(rdb_filepath, "wb") as rdb_file:
                 rdb_file.write(response.ldb)
             with open(rdb_filepath.replace("rdb.db", "rdb_copy.db"), "wb") as rdb_file:
