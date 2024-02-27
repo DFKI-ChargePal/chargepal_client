@@ -46,7 +46,6 @@ class Core:
                     f"UPDATE {table_name} SET {set_columns} WHERE rowid = ?",
                     row_values + (row_identifier,),
                 )
-
         conn_rdb.commit()
         conn_rdb.close()
 

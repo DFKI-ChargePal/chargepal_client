@@ -1,0 +1,4 @@
+<launch>
+    <node pkg="chargepal_client" type="client.py" name="chargepal_client"  output="screen"/>
+    
+</launch>
