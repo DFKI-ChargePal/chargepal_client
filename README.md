@@ -2,7 +2,8 @@
 This package helps in communicating to the grpc server.
 
 **Note:**
-Check if the `.py` and `.pyi` files are created inside `/chargepal_client/src/chargepal_client`. If not, inside `/chargepal_client/src/chargepal_client` run `python -m grpc_tools.protoc -I. --python_out=. --pyi_out=. --grpc_python_out=. communication.proto`  to create them.
+Check if the `.py` and `.pyi` files are created inside `/chargepal_client/src/chargepal_client`. 
+If not, inside `/chargepal_client/src/chargepal_client` run `python -m grpc_tools.protoc -I. --python_out=. --pyi_out=. --grpc_python_out=. communication.proto`  to create them.
 
 The table below shows the functions and its purpose
 
