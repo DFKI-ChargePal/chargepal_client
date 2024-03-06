@@ -9,7 +9,7 @@ from chargepal_client.core import Core
 class Grpc_Client(Core):
     def __init__(self):
         super().__init__(
-            rospy.get_param("/server_address", "192.168.158.25:50058"),
+            rospy.get_param("/server_address"),
             rospy.get_param("/robot_name"),
         )
         self.rospack = rospkg.RosPack()
@@ -26,19 +26,26 @@ class Grpc_Client(Core):
         )
 
     def pull_ldb(self):
-        super().pull_ldb(
+        success = super().pull_ldb(
             self.rdb_filepath,
             self.heartbeat_publisher.publish,
         )
+        return success
 
 
 def main():
     rospy.init_node("chargepal_grpc_client")
+    ldb_pull = False
     client = Grpc_Client()
-    rdb_update_thread = threading.Thread(target=client.update_rdb)
-    rdb_update_thread.start()
+    ldb_pull = client.pull_ldb()
+    if ldb_pull:
+        client.update_rdb()
+    # rdb_update_thread = threading.Thread(target=client.update_rdb)
+    # rdb_update_thread.start()
+    else:
+        print("Server not connected")
+
     rospy.spin()
-    rdb_update_thread.join()
 
 
 if __name__ == "__main__":

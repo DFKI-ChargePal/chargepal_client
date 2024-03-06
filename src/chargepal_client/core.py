@@ -252,6 +252,7 @@ class Core:
             with open(rdb_filepath.replace("rdb.db", "rdb_copy.db"), "wb") as rdb_file:
                 rdb_file.write(response.ldb)
             publisher_callback("SERVER_CONNECTED")
+            return True
         except grpc.RpcError as e:
             if e.code() == StatusCode.UNAVAILABLE:
                 publisher_callback("SERVER_UNAVAILABLE")
@@ -260,3 +261,4 @@ class Core:
                 publisher_callback("SERVER_DEADLINE_EXCEEDED")
             else:
                 publisher_callback(str(e.code()))
+            return False
