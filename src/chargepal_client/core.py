@@ -1,8 +1,8 @@
 from typing import Callable, Optional, Tuple
 from grpc import StatusCode
 import grpc
-import communication_pb2
-import communication_pb2_grpc
+from chargepal_client import communication_pb2
+from chargepal_client import communication_pb2_grpc
 import sqlite3
 import ast
 
