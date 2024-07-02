@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import rospy
 import rospkg
-import threading
 import std_msgs.msg
 from chargepal_client.core import Core
 
@@ -13,7 +12,7 @@ class Grpc_Client(Core):
             rospy.get_param("/robot_name"),
         )
         self.rospack = rospkg.RosPack()
-        self.rdb_filepath = self.rospack.get_path("chargepal_bundle") + "/db/rdb.db"
+        self.rdb_filepath = rospy.get_param("/rdb_path")
         self.heartbeat_publisher = rospy.Publisher(
             "/grpc_server_status", std_msgs.msg.String, queue_size=10
         )
@@ -25,26 +24,11 @@ class Grpc_Client(Core):
             self.heartbeat_publisher.publish,
         )
 
-    def pull_ldb(self):
-        success = super().pull_ldb(
-            self.rdb_filepath,
-            self.heartbeat_publisher.publish,
-        )
-        return success
-
 
 def main():
     rospy.init_node("chargepal_grpc_client")
-    ldb_pull = False
     client = Grpc_Client()
-    ldb_pull = client.pull_ldb()
-    if ldb_pull:
-        client.update_rdb()
-    # rdb_update_thread = threading.Thread(target=client.update_rdb)
-    # rdb_update_thread.start()
-    else:
-        print("Server not connected")
-
+    client.update_rdb()
     rospy.spin()
 
 
