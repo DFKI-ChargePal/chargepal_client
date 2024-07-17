@@ -6,6 +6,7 @@ from chargepal_client import communication_pb2_grpc
 import sqlite3
 import ast
 from datetime import datetime
+import concurrent.futures
 
 
 class Core:
@@ -147,10 +148,47 @@ class Core:
         conn_rdb.commit()
         conn_rdb.close()
 
-    def update_rdb(
+    def handle_request(self, request, request_name)-> tuple:
+        """
+        Handles different types of gRPC requests based on request_name.
+
+        Args:
+            request: The request object to be sent.
+            request_name (str): The name indicating the type of request ('update_rdb' or 'log_text').
+
+        Returns:
+            tuple: A tuple containing the response and an error (if any).
+                - If successful, returns (response, None).
+                - If there's an RpcError during the gRPC call, returns (None, e).
+        """
+        try:
+            if request_name == "update_rdb":
+                response = self.stub.UpdateRDB(request)
+            else:
+                response = self.stub.LogText(request)
+            return response, None
+        except grpc.RpcError as e:
+            return None, e
+
+    def read_logs(self, file_path) -> str:
+        """
+        Reads the contents of a file located at the specified file_path.
+
+        Args:
+            file_path (str): The path to the file to be read.
+
+        Returns:
+            str: The contents of the file as a string.
+        """
+        with open(file_path, "r") as file:
+            file_contents = file.read()
+            return file_contents
+
+    def background_requests(
         self,
         loop_condition: Callable[[], bool],
         rdb_filepath: str,
+        log_filepath: str,
         publisher_callback: Callable[[str], None],
     ) -> None:
         """
@@ -161,6 +199,7 @@ class Core:
             loop_condition: A callable that returns a boolean value indicating
                 whether the update loop should continue or not.
             rdb_filepath: The filepath where the updated RDB should be saved.
+            log_filepath: The filepath where the logs are.
             publisher_callback: A callback function that is called with a status
                 message indicating the result of the update.
 
@@ -168,24 +207,47 @@ class Core:
             None
         """
         while loop_condition():
-            request = communication_pb2.Request(
-                robot_name=self.robot_name, request_name="update_rdb"
-            )
-            try:
-                response = self.stub.UpdateRDB(request)
+            with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+                update_rdb_request = communication_pb2.Request(
+                    robot_name=self.robot_name, request_name="update_rdb"
+                )
+                log_text_request = communication_pb2.Request(
+                    robot_name=self.robot_name,
+                    request_name="log_text",
+                    log_text=self.read_logs(log_filepath),
+                )
+                update_rdb = executor.submit(
+                    self.handle_request, update_rdb_request, "update_rdb"
+                )
+                log_text = executor.submit(
+                    self.handle_request, log_text_request, "log_text"
+                )
 
-                self.update_database(rdb_filepath, response)
+                update_rdb_response, error_update_rdb = update_rdb.result()
+                log_text_response, error_log_text = log_text.result()
 
-                publisher_callback("SERVER_CONNECTED")
+                # Process the first response
+                if error_update_rdb:
+                    if error_update_rdb.code() == StatusCode.UNAVAILABLE:
+                        publisher_callback("SERVER_UNAVAILABLE")
+                    elif error_update_rdb.code() == StatusCode.DEADLINE_EXCEEDED:
+                        publisher_callback("SERVER_DEADLINE_EXCEEDED")
+                    else:
+                        publisher_callback(str(error_update_rdb.code()))
 
-            except grpc.RpcError as e:
-                if e.code() == StatusCode.UNAVAILABLE:
-                    publisher_callback("SERVER_UNAVAILABLE")
-
-                elif e.code() == StatusCode.DEADLINE_EXCEEDED:
-                    publisher_callback("SERVER_DEADLINE_EXCEEDED")
                 else:
-                    publisher_callback(str(e.code()))
+                    self.update_database(rdb_filepath, update_rdb_response)
+
+                if error_log_text:
+                    if error_log_text.code() == StatusCode.UNAVAILABLE:
+                        publisher_callback("SERVER_UNAVAILABLE")
+                    elif error_log_text.code() == StatusCode.DEADLINE_EXCEEDED:
+                        publisher_callback("SERVER_DEADLINE_EXCEEDED")
+                    else:
+                        publisher_callback(str(error_log_text.code()))
+
+                else:
+                    publisher_callback("SERVER_CONNECTED")
 
     def fetch_job(self) -> Tuple[Optional[communication_pb2.Response_FetchJob], str]:
         """
@@ -425,6 +487,42 @@ class Core:
         )
         try:
             response = self.stub.Ready2PlugInADS(request)
+            status = "SUCCESSFUL"
+        except grpc.RpcError as e:
+            if e.code() == StatusCode.UNAVAILABLE:
+                status = "SERVER_UNAVAILABLE"
+            elif e.code() == StatusCode.DEADLINE_EXCEEDED:
+                status = "SERVER_DEADLINE_EXCEEDED"
+            else:
+                status = str(e.code())
+        return response, status
+
+    def battery_communication(
+        self, cart_name: str, request_name: str, station_name: str
+    ) -> Tuple[Optional[communication_pb2.Response_BatteryCommunication], str]:
+        """
+        Checks if the specified station is ready to plug in ADS (Adapter Station).
+
+        Args:
+        cart_name (str): The name of the cart.
+        request_name (str): The name of the battery request.
+        station_name (str): The name of the current robot location.
+
+        Returns:
+            Tuple[Optional[communication_pb2.Response_BatteryCommunication], str]: A tuple containing the response from the server
+            and the status of the request. The response is an optional `communication_pb2.Response_BatteryCommunication` object,
+            and the status is a string indicating the result of the request.
+
+        Raises:
+            grpc.RpcError: If an error occurs during the gRPC call.
+
+        """
+        response: Optional[communication_pb2.Response_BatteryCommunication] = None
+        request = communication_pb2.Request(
+            station_name=station_name, request_name=request_name, cart_name=cart_name
+        )
+        try:
+            response = self.stub.BatteryCommunication(request)
             status = "SUCCESSFUL"
         except grpc.RpcError as e:
             if e.code() == StatusCode.UNAVAILABLE:
